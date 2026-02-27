@@ -29,75 +29,117 @@ As the platform scales to handle the €20B German market, the modules within **
 
 
 ```mermaid
-graph TD
-    %% External Data Sources at the Top
-    subgraph External_In [Data Sources]
-        DATEV[DATEV / Klardaten]
-        BANK[Banking APIs / PSD2]
-        SP[SharePoint / Cloud]
-    end
+graph TB
 
-    %% Ingestion Layer
-    subgraph Data_Muscle [Data Ingestion & Storage]
-        DIS[Data Ingestion Service]
-        DS[Document Service]
-        S3[(Restricted S3)]
-    end
+%% =========================
+%% Portal Layer
+%% =========================
+subgraph L1_Portal_Layer
+  AP[Advisor Portal - React]
+  CP[Client Portal - React]
+end
 
-    %% Core Logic (Modular Monolith)
-    subgraph Synapse_Core [Synapse-Core Monolith]
-        direction TB
-        CMS[Customer Management]
-        CTS[Customer Taxation - State Machine]
-        NOT[Notification Service]
-        FIL[Filing Service]
-    end
+%% =========================
+%% Service Layer
+%% =========================
+subgraph L2_Service_Layer
 
-    %% Expanded Intelligence Swarm
-    subgraph Intelligence [Intelligence Swarm]
-        direction TB
-        IO[Intelligence Orchestrator]
+  IAM[Identity Provider IAM]
+
+  subgraph CORE_Synapse_Core_Service
+    CMS[Customer Management - PII Vault]
+    CTS[Customer Taxation - State Machine]
+    NOTIF[Notification Service]
+    FIL[Filing Service]
+  end
+
+  subgraph IQ_Intelligence_Layer
+    IO[Intelligence Orchestrator]
+    subgraph AI_Agents
         AA[Anonymization Agent]
+        IA[Ingestion Agent]    
         EA[Embedding Agent]
         CA[Compliance Agent]
         OA[Optimization Agent]
-        
-        IO <--> AA & EA & CA & OA
     end
-
-    %% User Access
-    subgraph User_Access [Identity & Portals]
-        IAM[Keycloak / IAM]
-        AP[Advisor Portal]
-        CP[Client Portal]
-    end
-
-    %% Authority at the Bottom
-    subgraph External_Out [Regulatory Filing]
-        ELSTER[Tax Authority / ELSTER]
-    end
-
-    %% Flow: Ingestion
-    External_In -->|OAuth2/mTLS| DIS
-    DIS <--> DS
-    DS <--> S3
-    DIS -- Normalized Data --> CTS
-
-    %% Flow: Processing & Intelligence
-    CTS -- Event Bus --> IO
     
-    %% Flow: Human Interaction
-    AP & CP --> IAM
-    AP & CP --> CTS
-    AP & CP --> CMS
+  end
 
-    %% Flow: Final Mile
-    CTS --> FIL
-    FIL -->|Secure REST| ELSTER
+end
 
-    %% Styling
-    style CMS fill:#f96,stroke:#333,stroke-width:2px
-    style IO fill:#9f9,stroke:#333,stroke-width:2px
-    style AA fill:#99f,stroke:#333,stroke-width:1px
-    style External_In fill:#f5f5f5,stroke:#999,stroke-dasharray: 5 5
-    style External_Out fill:#f5f5f5,stroke:#999,stroke-dasharray: 5 5
+%% =========================
+%% Data Layer
+%% =========================
+subgraph L3_Data_Layer_EU
+  S3[Object Store - S3 or MinIO]
+  MDS[Metadata Store - Document DB]
+  VDB[Vector Database - Context RAG]
+  DR[Domain Knowledge Store - Laws]
+  AUD[Immutable Audit Log]
+  RDMS[Postgres RDBMS]
+end
+
+%% =========================
+%% Ingestion Layer
+%% =========================
+subgraph L4_Ingestion_Service
+
+  subgraph SRC_External_Source_adapter
+    DATEV[DATEV API]
+    BANK[Open Banking API]
+    SP[SharePoint API]
+  end
+  
+  DIS[Data Ingestion Service]
+  DS[Document Service]
+
+end
+
+%% =========================
+%% External Filing
+%% =========================
+ELSTER[Tax Authority ELSTER]
+
+%% ---- Auth ----
+AP --> IAM
+CP --> IAM
+
+AP --> CTS
+CP --> CTS
+AP --> CMS
+CP --> CMS
+
+%% ---- Ingestion ----
+DATEV --> DIS
+BANK --> DIS
+SP --> DIS
+
+DIS --> DS
+DS --> S3
+DIS --> MDS
+DIS --> CMS
+
+%% ---- Workflow ----
+CTS --> IO
+
+IO --> VDB
+IO --> DR
+IO --> MDS
+IO --> AUD
+
+AA -.- IO
+IA -.- IO
+EA -.- IO
+CA -.- IO
+OA -.- IO
+
+FIL --> RDMS
+CMS --> RDMS
+CTS --> RDMS
+NOTIF --> RDMS
+
+
+%% ---- Filing ----
+CTS --> FIL
+FIL --> ELSTER
+```
