@@ -46,7 +46,7 @@ subgraph L2_Service_Layer
 
   IAM[Identity Provider IAM]
 
-  subgraph CORE_Synapse_Core
+  subgraph CORE_Synapse_Core_Service
     CMS[Customer Management - PII Vault]
     CTS[Customer Taxation - State Machine]
     NOTIF[Notification Service]
@@ -55,14 +55,15 @@ subgraph L2_Service_Layer
 
   subgraph IQ_Intelligence_Layer
     IO[Intelligence Orchestrator]
-    AA[Anonymization Agent]
-    IA[OCR and Extraction Agent]
-    EA[Embedding Agent]
-    CA[Compliance Agent]
-    OA[Optimization Agent]
+    subgraph AI_Agents
+        AA[Anonymization Agent]
+        IA[Ingestion Agent]    
+        EA[Embedding Agent]
+        CA[Compliance Agent]
+        OA[Optimization Agent]
+    end
+    
   end
-
-  WFE[Automation Platform - Workflow Engine]
 
 end
 
@@ -75,19 +76,20 @@ subgraph L3_Data_Layer_EU
   VDB[Vector Database - Context RAG]
   DR[Domain Knowledge Store - Laws]
   AUD[Immutable Audit Log]
+  RDMS[Postgres RDBMS]
 end
 
 %% =========================
 %% Ingestion Layer
 %% =========================
-subgraph L4_Ingestion_Layer
+subgraph L4_Ingestion_Service
 
-  subgraph SRC_External_Sources
+  subgraph SRC_External_Source_adapter
     DATEV[DATEV API]
     BANK[Open Banking API]
     SP[SharePoint API]
   end
-
+  
   DIS[Data Ingestion Service]
   DS[Document Service]
 
@@ -115,16 +117,27 @@ SP --> DIS
 DIS --> DS
 DS --> S3
 DIS --> MDS
-DIS --> WFE
+DIS --> CMS
 
 %% ---- Workflow ----
-WFE --> CTS
 CTS --> IO
 
 IO --> VDB
 IO --> DR
 IO --> MDS
 IO --> AUD
+
+AA -.- IO
+IA -.- IO
+EA -.- IO
+CA -.- IO
+OA -.- IO
+
+FIL --> RDMS
+CMS --> RDMS
+CTS --> RDMS
+NOTIF --> RDMS
+
 
 %% ---- Filing ----
 CTS --> FIL
