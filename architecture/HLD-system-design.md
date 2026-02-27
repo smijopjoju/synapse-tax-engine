@@ -143,3 +143,33 @@ NOTIF --> RDMS
 CTS --> FIL
 FIL --> ELSTER
 ```
+
+### 4.2 Service-Level Enforcement
+
+All services enforce tenant scoping:
+
+- Every database query includes mandatory `tenant_id` filtering.
+- Business logic is scoped to the authenticated tenant.
+- Events published to the system include `tenant_id` as part of the payload.
+- No cross-tenant operations are supported at the application layer.
+
+This ensures logical isolation between Steuerberatungen and their Mandanten.
+
+---
+
+### 4.3 Data-Layer Isolation & PII Containment
+
+Isolation is reinforced at the storage layer:
+
+- **Postgres (RDBMS)**: All domain tables include `tenant_id`.
+- **Object Storage (S3/MinIO)**: Documents are partitioned by `/tenant/{tenant_id}/`.
+- **Vector Database**: Embeddings are tagged and filtered by `tenant_id`.
+- **Audit Logs**: Immutable audit records include `tenant_id` for traceability.
+
+Additionally:
+
+- Only the **Customer Management Service** stores and processes PII.
+- Intelligence services operate exclusively on anonymized data.
+- Rehydration of PII occurs strictly within the secure Synapse-Core boundary.
+
+This layered enforcement model guarantees strict access control, supports GDPR/§203 compliance, and minimizes cross-tenant data leakage risk.
