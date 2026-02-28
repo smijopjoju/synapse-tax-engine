@@ -37,3 +37,31 @@ To maximize the 1-year runway, we maintain only **4 main deployable units**:
 2.  **Limetax-IQ:** (AI Orchestration & Swarm).
 3.  **Ingestion-Hub:** (Document Service & Adapters).
 4.  **Identity Provider:** (Managed Keycloak/Cognito).
+
+## 6. Infrastructure Optimization & Cost Efficiency
+
+**Decision:** We utilize a **Hybrid AI Strategy** (Local ML for Processing + LLM for Reasoning) to minimize costs and maximize VPC data residency.
+
+### 6.1 Hybrid Model Strategy (ML vs. LLM)
+To reduce token burn and latency, we distinguish between "Surgical" and "Cognitive" tasks:
+
+| Task | Tech Stack | Rationale |
+| :--- | :--- | :--- |
+| **Anonymization** | Microsoft Presidio (Local) | Faster and more consistent for NER; keeps PII inside the VPC. |
+| **Embedding** | Hugging Face TEI (Local) | Zero token cost for vectorization; avoids sending raw text to third-party APIs. |
+| **Extraction** | Claude 3.5 Sonnet (LLM) | High-reasoning required for messy document layouts and tax logic. |
+| **Compliance/Optimization** | Claude 3.5 Sonnet (LLM) | Interprets German tax code and cross-references checklist items. |
+
+### 6.2 Back-of-the-Envelope Cost Analysis (Example: 1,500 Documents)
+For a mid-sized GmbH filing (~1,000 PDFs and 500 scanned bills), the estimated infrastructure and model costs are optimized via our decoupled architecture:
+
+* **LLM Token Usage:** * ~3.5k Tokens/Doc (Extraction + Audit).
+    * **Cost:** ~€21.00 per client filing.
+* **Compute (AWS Fargate Spot):** * Leveraging Spot instances for bursty ingestion/AI workloads reduces compute costs by ~70%.
+    * **Cost:** ~€3.00 for 2 hours of parallel processing.
+* **Storage & Fixed Infra:** * S3 (Originals + Scrubbed), DocumentDB, and Vector DB (shared across tenants).
+    * **Cost:** ~€14.00 (Pro-rated per client).
+
+**Total Estimated COGS:** **~€38.00 per filing.** ### 6.3 The "Scale" Moat
+* **Independent Scaling:** During peak tax season (March/April), we can scale the `Ingestion-Hub` and `Intelligence` workers to 50+ instances to handle 100k+ documents without impacting the responsiveness of the `Synapse-Core` monolith.
+* **Infrastructure as a Moat:** By moving Anonymization and Embedding to local ML workers in our VPC, we reduce our variable LLM costs by ~30% compared to a "Naive LLM" architecture, while simultaneously strengthening our §203 StGB compliance posture.
